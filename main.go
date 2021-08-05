@@ -60,7 +60,7 @@ func (t *Task) Run() {
 }
 
 // TestA is the most common use case.
-// Starts the task in a new goroutine and create a for-select loop at once.
+// Starts the task in a new goroutine and creates a for-select loop at once.
 // Task's progress channel will be created at the first ProgressCh() is called(immediately after task goroutine started).
 // It can capture the whole progress from 0 - 100.
 func TestA() {
