@@ -1,6 +1,6 @@
 # lazy-creating-chan
 
-lazy-creating-chan is an example to show how to use a lazily creatd channel to pass data between goroutines.
+lazy-creating-chan is an example to show how to use a lazily created channel to pass data between goroutines.
 
 This example code is inspired by the [Done()](https://github.com/golang/go/blob/release-branch.go1.17/src/context/context.go#L358) and [cancel()](https://github.com/golang/go/blob/release-branch.go1.17/src/context/context.go#L397) in the [official context package](https://pkg.go.dev/context).
  
