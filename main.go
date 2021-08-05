@@ -119,6 +119,7 @@ func main() {
 	TestC()
 
 	// Output:
+	//channel created in ProgressCh()
 	//Task: A is running...
 	//Task: A: 0%
 	//Task: A: 10%
