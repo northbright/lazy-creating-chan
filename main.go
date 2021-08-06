@@ -7,18 +7,25 @@ import (
 	"time"
 )
 
+// closedchan is a reusable closed channel.
+var closedchan = make(chan int)
+
+func init() {
+	close(closedchan)
+}
+
 // Task can report progress when doing the work.
 type Task struct {
 	Name string
 	// Used to store the progress channel.
 	progress atomic.Value
 	mu       sync.Mutex
-	Done     chan struct{}
+	result   string
 }
 
 // NewTask creates the task by given task name.
 func NewTask(name string) *Task {
-	return &Task{Name: name, Done: make(chan struct{})}
+	return &Task{Name: name}
 }
 
 // ProgressCh returns a channel to receive the task progress.
@@ -32,12 +39,20 @@ func (t *Task) ProgressCh() <-chan int {
 	// still need mutex to protect the "transaction(load and store atomic.Value)" between differents goroutines.
 	t.mu.Lock()
 	defer t.mu.Unlock()
+
+	// Lazily create the channel at first ProgressCh() is called.
 	ch = t.progress.Load()
-	// Lazily created at first ProgressCh() is called.
 	if ch == nil {
-		ch = make(chan int)
+		// Return closed chan if task is done(result is not empty)
+		if t.result != "" {
+			ch = closedchan
+			fmt.Printf("closed channel created in ProgressCh() after task is done\n")
+		} else {
+			ch = make(chan int)
+			fmt.Printf("channel created in ProgressCh()\n")
+		}
+		// Store new created channel in atomic.Value.
 		t.progress.Store(ch)
-		fmt.Printf("channel created in ProgressCh()\n")
 	}
 	return ch.(chan int)
 }
@@ -55,8 +70,16 @@ func (t *Task) Run() {
 		time.Sleep(time.Millisecond * 50)
 	}
 
+	// Set the result to a non-empty value to mark the task is done.
+	t.result = "OK"
+
+	// Close progress channel after task is done.
+	ch, _ := t.progress.Load().(chan int)
+	if ch != nil {
+		close(ch)
+	}
+
 	fmt.Printf("Task: %v goroutine exits\n", t.Name)
-	t.Done <- struct{}{}
 }
 
 // TestA is the most common use case.
@@ -72,11 +95,13 @@ func TestA() {
 
 	for {
 		select {
-		case p := <-t.ProgressCh():
-			fmt.Printf("Task: %v: %d%%\n", t.Name, p)
-		case <-t.Done:
-			fmt.Printf("Task: %v: done\n", t.Name)
-			return
+		case p, ok := <-t.ProgressCh():
+			if ok {
+				fmt.Printf("Task: %v: %d%%\n", t.Name, p)
+			} else {
+				fmt.Printf("Task: %v: done\n", t.Name)
+				return
+			}
 		}
 	}
 }
@@ -94,23 +119,39 @@ func TestB() {
 
 	for {
 		select {
-		case p := <-t.ProgressCh():
-			fmt.Printf("Task: %v: %d%%\n", t.Name, p)
-		case <-t.Done:
-			fmt.Printf("Task: %v: done\n", t.Name)
-			return
+		case p, ok := <-t.ProgressCh():
+			if ok {
+				fmt.Printf("Task: %v: %d%%\n", t.Name, p)
+			} else {
+				fmt.Printf("Task: %v: done\n", t.Name)
+				return
+			}
 		}
 	}
 }
 
-// TestC ignores the progress data and the progress channel will not be created at all.
+// TestC has a long delay to create the for-select loop AFTER task is done.
+// It will create a closed channel when first ProgressCh() is called.
+// It will loose all progress data(0 - 100) and read nil from the closed channel.
 func TestC() {
 	t := NewTask("C")
 	go func() {
 		t.Run()
 	}()
 
-	<-t.Done
+	time.Sleep(time.Second * 3)
+
+	for {
+		select {
+		case p, ok := <-t.ProgressCh():
+			if ok {
+				fmt.Printf("Task: %v: %d%%\n", t.Name, p)
+			} else {
+				fmt.Printf("Task: %v: done\n", t.Name)
+				return
+			}
+		}
+	}
 }
 
 func main() {
@@ -119,32 +160,34 @@ func main() {
 	TestC()
 
 	// Output:
-	//channel created in ProgressCh()
-	//Task: A is running...
-	//Task: A: 0%
-	//Task: A: 10%
-	//Task: A: 20%
-	//Task: A: 30%
-	//Task: A: 40%
-	//Task: A: 50%
-	//Task: A: 60%
-	//Task: A: 70%
-	//Task: A: 80%
-	//Task: A: 90%
-	//Task: A: 100%
-	//Task: A goroutine exits
-	//Task: A: done
-	//Task: B is running...
-	//channel created in ProgressCh()
-	//Task: B: 40%
-	//Task: B: 50%
-	//Task: B: 60%
-	//Task: B: 70%
-	//Task: B: 80%
-	//Task: B: 90%
-	//Task: B: 100%
-	//Task: B goroutine exits
-	//Task: B: done
-	//Task: C is running...
-	//Task: C goroutine exits
+	// channel created in ProgressCh()
+	// Task: A is running...
+	// Task: A: 0%
+	// Task: A: 10%
+	// Task: A: 20%
+	// Task: A: 30%
+	// Task: A: 40%
+	// Task: A: 50%
+	// Task: A: 60%
+	// Task: A: 70%
+	// Task: A: 80%
+	// Task: A: 90%
+	// Task: A: 100%
+	// Task: A goroutine exits
+	// Task: A: done
+	// Task: B is running...
+	// channel created in ProgressCh()
+	// Task: B: 40%
+	// Task: B: 50%
+	// Task: B: 60%
+	// Task: B: 70%
+	// Task: B: 80%
+	// Task: B: 90%
+	// Task: B: 100%
+	// Task: B goroutine exits
+	// Task: B: done
+	// Task: C is running...
+	// Task: C goroutine exits
+	// closed channel created in ProgressCh() after task is done
+	// Task: C: done
 }
