@@ -71,7 +71,9 @@ func (t *Task) Run() {
 	}
 
 	// Set the result to a non-empty value to mark the task is done.
+	t.mu.Lock()
 	t.result = "OK"
+	t.mu.Unlock()
 
 	// Close progress channel after task is done.
 	ch, _ := t.progress.Load().(chan int)
