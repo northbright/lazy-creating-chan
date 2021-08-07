@@ -30,18 +30,13 @@ func NewTask(name string) *Task {
 
 // ProgressCh returns a channel to receive the task progress.
 func (t *Task) ProgressCh() <-chan int {
-	ch := t.progress.Load()
-	if ch != nil {
-		return ch.(chan int)
-	}
-
 	// Even load / save atomic.Value is goroutine safe,
 	// still need mutex to protect the "transaction(load and store atomic.Value)" between differents goroutines.
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	// Lazily create the channel at first ProgressCh() is called.
-	ch = t.progress.Load()
+	ch, _ := t.progress.Load().(chan int)
 	if ch == nil {
 		// Return closed chan if task is done(result is not empty)
 		if t.result != "" {
@@ -54,7 +49,7 @@ func (t *Task) ProgressCh() <-chan int {
 		// Store new created channel in atomic.Value.
 		t.progress.Store(ch)
 	}
-	return ch.(chan int)
+	return ch
 }
 
 // Run starts the task work.
