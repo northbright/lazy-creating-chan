@@ -9,6 +9,7 @@ It uses a channel to send / receive the progress data:
 * The channel will be lazily created at the first ProgressCh() is called in main goroutine only
 
 This example code is inspired by the [Done()](https://github.com/golang/go/blob/release-branch.go1.17/src/context/context.go#L358) and [cancel()](https://github.com/golang/go/blob/release-branch.go1.17/src/context/context.go#L397) in the [official context package](https://pkg.go.dev/context).
+* Use functions([Done()](https://github.com/golang/go/blob/release-branch.go1.17/src/context/context.go#L358) and [cancel()](https://github.com/golang/go/blob/release-branch.go1.17/src/context/context.go#L397)) to return the channels which make it possible to create the channel dynamically when need
 * Use [atomic.Value](https://pkg.go.dev/sync/atomic)'s [Load](https://pkg.go.dev/sync/atomic#Value.Load) and [Store](https://pkg.go.dev/sync/atomic#Value.Store) to load / store a channel
 * Use a [pre-closed channel](https://github.com/golang/go/blob/release-branch.go1.17/src/context/context.go#L333) to make it possible to create the channel even the task goroutine exited
 
