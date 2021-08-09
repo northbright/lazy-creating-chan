@@ -6,7 +6,7 @@ There're 2 goroutines in the example: one main goroutine and one work goroutine.
 It uses a channel to send / receive the progress data:
 * The work goroutine sends progress data to the channel if it's not nil
 * The work goroutine closes the channel if the it's not nil when task is done
-* The channel will be lazily created at the first ProgressCh() is called in main goroutine only
+* The channel will be lazily created at the first ProgressCh() is called or it will load a closed channel in Run() when task is done and the channel has not been created
 
 This example code is inspired by the [Done()](https://github.com/golang/go/blob/release-branch.go1.17/src/context/context.go#L358) and [cancel()](https://github.com/golang/go/blob/release-branch.go1.17/src/context/context.go#L397) in the [official context package](https://pkg.go.dev/context).
 * Use functions([Done()](https://github.com/golang/go/blob/release-branch.go1.17/src/context/context.go#L358) and [cancel()](https://github.com/golang/go/blob/release-branch.go1.17/src/context/context.go#L397)) to return the channels which make it possible to create the channel dynamically when need
