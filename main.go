@@ -30,26 +30,24 @@ func NewTask(name string) *Task {
 
 // ProgressCh returns a channel to receive the task progress.
 func (t *Task) ProgressCh() <-chan int {
+	ch := t.progress.Load()
+	if ch != nil {
+		return ch.(chan int)
+	}
+
 	// Even load / save atomic.Value is goroutine safe,
 	// still need mutex to protect the "transaction(load and store atomic.Value)" between differents goroutines.
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	// Lazily create the channel at first ProgressCh() is called.
-	ch, _ := t.progress.Load().(chan int)
+	ch = t.progress.Load()
 	if ch == nil {
-		// Return closed chan if task is done(result is not empty)
-		if t.result != "" {
-			ch = closedchan
-			fmt.Printf("closed channel created in ProgressCh() after task is done\n")
-		} else {
-			ch = make(chan int)
-			fmt.Printf("channel created in ProgressCh()\n")
-		}
-		// Store new created channel in atomic.Value.
+		ch = make(chan int)
 		t.progress.Store(ch)
+		fmt.Printf("channel created in ProgressCh()\n")
 	}
-	return ch
+	return ch.(chan int)
 }
 
 // Run starts the task work.
@@ -65,14 +63,14 @@ func (t *Task) Run() {
 		time.Sleep(time.Millisecond * 50)
 	}
 
-	// Set the result to a non-empty value to mark the task is done.
 	t.mu.Lock()
-	t.result = "OK"
-	t.mu.Unlock()
-
+	defer t.mu.Unlock()
 	// Close progress channel after task is done.
 	ch, _ := t.progress.Load().(chan int)
-	if ch != nil {
+	if ch == nil {
+		t.progress.Store(closedchan)
+		fmt.Printf("closed channel created in Run() after task is done\n")
+	} else {
 		close(ch)
 	}
 
