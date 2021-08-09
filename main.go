@@ -182,7 +182,7 @@ func main() {
 	// Task: B goroutine exits
 	// Task: B: done
 	// Task: C is running...
+	// closed channel created in Run() after task is done
 	// Task: C goroutine exits
-	// closed channel created in ProgressCh() after task is done
 	// Task: C: done
 }
