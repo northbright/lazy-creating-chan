@@ -20,7 +20,6 @@ type Task struct {
 	// Used to store the progress channel.
 	progress atomic.Value
 	mu       sync.Mutex
-	result   string
 }
 
 // NewTask creates the task by given task name.
